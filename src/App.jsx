@@ -1,3 +1,4 @@
+WhatsApp Sales Copilot:src/App.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, MessageSquare, Shield, Zap, Send, Menu, X, CheckCircle2, 
