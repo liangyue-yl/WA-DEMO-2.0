@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main"] # 如果你的默认分支叫 master，请把这里改成 master
 
 permissions:
   contents: read
