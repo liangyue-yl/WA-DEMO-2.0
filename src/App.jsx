@@ -6,11 +6,6 @@ import {
   UserPlus, PencilLine, Eye, RefreshCw, Download, ExternalLink, ListChecks
 } from 'lucide-react';
 
-/**
- * WhatsApp Sales Copilot - Standalone Demo
- * FIXED: Removed manual ReactDOM.createRoot to resolve environment-specific runtime errors.
- */
-
 // --- Global Mock Data ---
 const AGENT_NAME = "Agent Zhang (Senior Consultant)";
 const MOCK_CUSTOMERS = [
@@ -19,7 +14,7 @@ const MOCK_CUSTOMERS = [
 ];
 
 const App = () => {
-  // --- States ---
+  // --- Core States ---
   const [activeCid, setActiveCid] = useState('c1');
   const [customerChats, setCustomerChats] = useState({
     c1: [
@@ -37,7 +32,7 @@ const App = () => {
     c2: [{ id: 'a1', sender: 'sys_bot', text: "🔔 Active Lead: Ms. Li (Term Life Inquiry)", time: '09:31 AM' }]
   });
 
-  // Synced state for the collaborative journey
+  // Synced Global Data (Database State)
   const [formData, setFormData] = useState({
     name: "",
     age: "30",
@@ -46,11 +41,11 @@ const App = () => {
     hoursOnRoad: "1-4 Hours",
     planName: "SafeCycle PA Plan",
     premium: "199",
-    step: 0, 
-    isAgentAssisting: false,
+    step: 0, // Global step in the DB
+    isAgentAssisting: false, // Who owns the UI focus?
   });
 
-  // LOCAL UI STATES - This ensures absolute isolation between the two screens
+  // LOCAL UI STATES - 100% ISOLATED
   const [customerShowDetails, setCustomerShowDetails] = useState(false);
   const [agentShowDetails, setAgentShowDetails] = useState(false);
 
@@ -79,7 +74,6 @@ const App = () => {
       ...prev,
       [activeCid]: [...(prev[activeCid] || []), { id: Date.now(), sender, text, time }]
     }));
-
     setCopilotChats(prev => ({
       ...prev,
       [activeCid]: [...(prev[activeCid] || []), { id: Date.now() + 1, sender, text, time }]
@@ -131,7 +125,7 @@ const App = () => {
       setFormData(prev => ({ ...prev, isAgentAssisting: false, step: 0 }));
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const flowMsg = [
-        { id: Date.now(), sender: 'agent', text: `I've prepared the ${formData.planName} application. Please click below to provide your details.`, time },
+        { id: Date.now(), sender: 'agent', text: `I've prepared the ${formData.planName} application. Please click below to start.`, time },
         { id: Date.now() + 1, sender: 'interactive', text: `Apply for ${formData.planName}`, type: 'flow_button', time }
       ];
       setCustomerChats(prev => ({ ...prev, [activeCid]: [...(prev[activeCid] || []), ...flowMsg] }));
@@ -143,7 +137,7 @@ const App = () => {
     setIsSwitchingLeads(false);
   };
 
-  // --- Sub-Components ---
+  // --- Components ---
 
   const PhoneContainer = ({ title, side, children, isAgent = false, subtitle = "" }) => (
     <div className="flex flex-col w-[380px] h-[720px] bg-slate-900 rounded-[3rem] border-[8px] border-slate-800 shadow-2xl overflow-hidden relative font-sans">
@@ -155,7 +149,7 @@ const App = () => {
         {isAgent ? (
           <button onClick={() => setIsSwitchingLeads(true)} className="p-1 hover:bg-white/10 rounded transition-colors"><Users size={20} /></button>
         ) : <UserCircle size={24} />}
-        <div className="flex-1 min-w-0 text-white text-left">
+        <div className="flex-1 min-w-0 text-white">
           <div className="font-bold text-sm truncate">{title}</div>
           <div className="text-[10px] opacity-80 truncate uppercase tracking-tighter">{subtitle || (isAgent ? 'Sales Copilot Console' : 'Personal Agent')}</div>
         </div>
@@ -177,7 +171,7 @@ const App = () => {
               <h2 className="text-xl font-bold tracking-tight text-white">Active Leads</h2>
             </div>
             {MOCK_CUSTOMERS.map(c => (
-              <div key={c.id} onClick={() => switchLead(c.id)} className={`p-4 rounded-2xl mb-2 cursor-pointer transition-all text-left ${activeCid === c.id ? 'bg-indigo-700 shadow-lg ring-1 ring-indigo-400' : 'bg-slate-800 hover:bg-slate-700'}`}>
+              <div key={c.id} onClick={() => switchLead(c.id)} className={`p-4 rounded-2xl mb-2 cursor-pointer transition-all ${activeCid === c.id ? 'bg-indigo-700 shadow-lg ring-1 ring-indigo-400' : 'bg-slate-800 hover:bg-slate-700'}`}>
                 <div className="font-bold text-sm text-white">{c.name}</div>
                 <div className="text-[10px] opacity-60 uppercase text-white">{c.occupation}</div>
               </div>
@@ -191,17 +185,17 @@ const App = () => {
   const MessageBubble = ({ msg, isAgentView }) => {
     if (msg.sender === 'system') return <div className="self-center bg-white/60 text-[9px] px-3 py-1 rounded-md my-2 text-slate-600 uppercase text-center tracking-tight shadow-sm font-bold">{msg.text}</div>;
     if (msg.type === 'action_required') return (
-      <div className="self-start bg-white rounded-lg shadow-md p-4 border-l-4 border-indigo-500 w-72 my-1 text-slate-800 text-left">
+      <div className="self-start bg-white rounded-lg shadow-md p-4 border-l-4 border-indigo-500 w-72 my-1 text-slate-800">
         <div className="flex items-center gap-2 mb-2 text-indigo-700 font-bold text-[10px] uppercase tracking-wider"><Zap size={14} className="fill-indigo-700"/> Copilot Suggestion</div>
         <p className="text-xs mb-4 leading-relaxed font-medium">{msg.text}</p>
         <div className="flex gap-2">
           <button onClick={() => triggerFlow(false)} className="flex-1 py-2 bg-indigo-600 text-white rounded font-bold text-[10px] uppercase shadow-sm active:scale-95 transition-transform tracking-wider text-center">Push Flow</button>
-          <button onClick={() => triggerFlow(true)} className="flex-1 py-2 border border-indigo-600 text-indigo-600 rounded font-bold text-[10px] uppercase active:scale-95 transition-transform tracking-wider text-center text-xs">Assist Entry</button>
+          <button onClick={() => triggerFlow(true)} className="flex-1 py-2 border border-indigo-600 text-indigo-600 rounded font-bold text-[10px] uppercase active:scale-95 transition-transform tracking-wider text-center">Assist Entry</button>
         </div>
       </div>
     );
     if (msg.type === 'flow_button') return (
-      <div className="self-start bg-white rounded-lg shadow-md p-3 border-l-4 border-[#128C7E] w-64 my-1 text-slate-800 text-left">
+      <div className="self-start bg-white rounded-lg shadow-md p-3 border-l-4 border-[#128C7E] w-64 my-1 text-slate-800">
         <button onClick={() => !isAgentView && setFormData(f => ({...f, step: 1, isAgentAssisting: false}))} className="w-full py-2 bg-[#128C7E] text-white rounded font-bold text-xs flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-sm">
           <FileText size={14} /> {msg.text}
         </button>
@@ -212,8 +206,8 @@ const App = () => {
     );
     const isMine = isAgentView ? (msg.sender === 'agent') : (msg.sender === 'user');
     return (
-      <div className={`max-w-[80%] p-2 rounded-lg text-xs shadow-sm my-0.5 ${isMine ? 'self-end bg-[#dcf8c6]' : 'self-start bg-white'} relative text-slate-800 text-left`}>
-        <div className="flex flex-col">
+      <div className={`max-w-[80%] p-2 rounded-lg text-xs shadow-sm my-0.5 ${isMine ? 'self-end bg-[#dcf8c6]' : 'self-start bg-white'} relative text-slate-800`}>
+        <div className="flex flex-col text-slate-800">
           <span className="leading-normal">{msg.text}</span>
           <span className="text-[8px] text-slate-400 self-end mt-1 font-mono">{msg.time}</span>
         </div>
@@ -221,13 +215,15 @@ const App = () => {
     );
   };
 
-  // --- WhatsApp Flow Native Shell ---
+  // --- WhatsApp Flow Native UI ---
   const WhatsAppFlow = ({ isAgentSide = false, isDetailsActive, setDetailsActive }) => {
-    // VISIBILITY ISOLATION:
-    // Agent side only mounts if they are assisting or locally viewing details.
-    // Customer side only mounts if NOT being assisted (taking control) or locally viewing details.
+    // CRITICAL: Strict isolation condition for visibility
+    const isActuallyAssisting = formData.isAgentAssisting && formData.step > 0;
+    
+    // For Customer: Show if NOT being assisted AND progress > 0 OR if local details active
+    // For Agent: Show if BEING assisted AND progress > 0 OR if local details active
     const shouldMount = isAgentSide 
-      ? (formData.isAgentAssisting || isDetailsActive)
+      ? (isActuallyAssisting || isDetailsActive)
       : ((formData.step > 0 && !formData.isAgentAssisting) || isDetailsActive);
 
     if (!shouldMount) return null;
@@ -235,14 +231,13 @@ const App = () => {
     return (
       <div className={`absolute inset-0 bg-black/40 z-40 flex flex-col justify-end transition-opacity duration-300`}>
         <div className="bg-white rounded-t-[2.5rem] w-full min-h-[70%] max-h-[90%] shadow-2xl flex flex-col animate-slide-up relative text-slate-800">
-          
           <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white rounded-t-[2.5rem] z-10 text-slate-800">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-[#128C7E] rounded-lg flex items-center justify-center text-white shadow-sm"><Shield size={16}/></div>
-              <div className="text-left">
+              <div>
                 <h4 className="font-bold text-slate-800 text-sm truncate max-w-[180px]">{formData.planName}</h4>
                 {isDetailsActive ? (
-                  <p className="text-[9px] text-[#128C7E] uppercase tracking-widest font-bold">Coverage Info</p>
+                  <p className="text-[9px] text-[#128C7E] uppercase tracking-widest font-bold">Benefit Coverage</p>
                 ) : formData.step > 0 && (
                   <p className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Step {formData.step} of 5</p>
                 )}
@@ -256,11 +251,11 @@ const App = () => {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide relative text-slate-800 text-left">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide relative text-slate-800">
             {isDetailsActive ? (
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100 shadow-inner">
-                  <h6 className="font-black text-[11px] mb-4 uppercase text-indigo-700 tracking-wider flex items-center gap-2 text-left"><Shield size={16}/> Core Benefits</h6>
+                  <h6 className="font-black text-[11px] mb-4 uppercase text-indigo-700 tracking-wider flex items-center gap-2"><Shield size={16}/> Policy Highlights</h6>
                   <ul className="text-xs space-y-4 text-slate-700 font-medium">
                     <li className="flex justify-between border-b border-slate-200/50 pb-2"><span>Accidental Death</span> <span className="font-bold text-slate-900">$500,000</span></li>
                     <li className="flex justify-between border-b border-slate-200/50 pb-2"><span>Accidental Disability</span> <span className="font-bold text-slate-900">Up to $500,000</span></li>
@@ -268,21 +263,21 @@ const App = () => {
                     <li className="flex justify-between"><span>Hospital Allowance</span> <span className="font-bold text-slate-900">$100/day</span></li>
                   </ul>
                 </div>
-                <div className="px-1"><p className="text-[11px] leading-relaxed text-slate-400 font-medium italic">Comprehensive coverage including high-risk occupation extension. Claims are processed directly via the portal.</p></div>
+                <div className="px-1"><p className="text-[11px] leading-relaxed text-slate-400 font-medium italic">Comprehensive coverage including high-risk occupation extension. Claims are processed directly via the WhatsApp portal.</p></div>
               </div>
             ) : (
               <>
-                {isAgentSide && formData.isAgentAssisting && (
+                {isAgentSide && isActuallyAssisting && (
                   <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl flex items-center gap-3 mb-2 animate-pulse text-indigo-800">
                     <PencilLine size={16} className="text-indigo-600" />
-                    <p className="text-[10px] font-bold uppercase tracking-tighter">Co-Entry Assist Mode</p>
+                    <p className="text-[10px] font-bold uppercase tracking-tighter">Collaborative Entry Mode</p>
                   </div>
                 )}
                 {formData.step === 1 && (
                   <div className="space-y-4 animate-in fade-in duration-300">
-                    <h5 className="font-bold text-xs text-indigo-600 uppercase flex items-center gap-2 tracking-tight"><Clock size={12}/> Profile Verification</h5>
-                    <div><label className="text-[10px] font-bold text-slate-500 uppercase block mb-1 text-left">Insured Age</label><input type="number" value={formData.age} onChange={(e) => updateFormData('age', e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#128C7E] outline-none shadow-sm font-semibold text-slate-800" /></div>
-                    <div><label className="text-[10px] font-bold text-slate-500 uppercase block mb-1 text-left">Exposure Level</label><select value={formData.hoursOnRoad} onChange={(e) => updateFormData('hoursOnRoad', e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none shadow-sm font-semibold text-slate-800"><option>Standard</option><option>Commuter</option><option>On-Road</option></select></div>
+                    <h5 className="font-bold text-xs text-indigo-600 uppercase flex items-center gap-2"><Clock size={12}/> Profile Check</h5>
+                    <div><label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Insured Age</label><input type="number" value={formData.age} onChange={(e) => updateFormData('age', e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#128C7E] outline-none shadow-sm font-semibold text-slate-800" /></div>
+                    <div><label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Exposure</label><select value={formData.hoursOnRoad} onChange={(e) => updateFormData('hoursOnRoad', e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none shadow-sm font-semibold text-slate-800"><option>Standard</option><option>Commuter</option><option>On-Road</option></select></div>
                   </div>
                 )}
                 {formData.step === 2 && (
@@ -292,33 +287,33 @@ const App = () => {
                       <div className="text-4xl font-black text-slate-800">${formData.premium}<span className="text-xs font-normal text-slate-400">/yr</span></div>
                       <p className="text-[9px] text-green-700 font-bold mt-2 uppercase">Verified Price</p>
                     </div>
-                    <button onClick={() => setDetailsActive(true)} className="w-full py-2 flex items-center justify-center gap-1 text-[10px] font-bold text-[#128C7E] hover:underline">View Coverage Provisions</button>
+                    <button onClick={() => setDetailsActive(true)} className="w-full py-2 flex items-center justify-center gap-1 text-[10px] font-bold text-[#128C7E] hover:underline">View Detail Provisions</button>
                   </div>
                 )}
                 {formData.step === 3 && (
-                  <div className="space-y-4 animate-in slide-in-from-right duration-300 text-left">
-                    <h5 className="font-bold text-xs text-indigo-600 uppercase flex items-center gap-2"><User size={12}/> Legal Holder Details</h5>
-                    <div><label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Full Legal Name</label><input value={formData.name} onChange={(e) => updateFormData('name', e.target.value)} placeholder="Enter name" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm shadow-sm text-slate-800" /></div>
-                    <div><label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">ID Number</label><input value={formData.idNumber} onChange={(e) => updateFormData('idNumber', e.target.value)} placeholder="Enter ID" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm shadow-sm text-slate-800" /></div>
+                  <div className="space-y-4 animate-in slide-in-from-right duration-300">
+                    <h5 className="font-bold text-xs text-indigo-600 uppercase flex items-center gap-2"><User size={12}/> Legal Details</h5>
+                    <div><label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Legal Name</label><input value={formData.name} onChange={(e) => updateFormData('name', e.target.value)} placeholder="Full Name" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm shadow-sm text-slate-800" /></div>
+                    <div><label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">ID Number</label><input value={formData.idNumber} onChange={(e) => updateFormData('idNumber', e.target.value)} placeholder="ID / Passport" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm shadow-sm text-slate-800" /></div>
                   </div>
                 )}
                 {formData.step === 4 && (
                   <div className="space-y-6 text-center animate-in zoom-in-95 duration-300 py-6">
                     <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto text-indigo-600 shadow-inner"><DollarSign size={32} /></div>
                     <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm text-slate-800">
-                      <div className="flex justify-between font-bold text-xs text-slate-400 mb-2 uppercase tracking-tight text-left">Fee Summary</div>
-                      <div className="flex justify-between font-black text-2xl text-slate-800 pt-2 border-t border-slate-100"><span>Payable</span> <span>${formData.premium}.00</span></div>
+                      <div className="flex justify-between font-bold text-xs text-slate-400 mb-2 uppercase tracking-tight">Total Premium</div>
+                      <div className="flex justify-between font-black text-2xl text-slate-800 pt-2 border-t border-slate-100"><span>Payable Now</span> <span>${formData.premium}.00</span></div>
                     </div>
                   </div>
                 )}
                 {formData.step === 5 && (
                   <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 py-8 animate-in zoom-in-90 duration-500 text-slate-800">
                     <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 shadow-xl ring-8 ring-green-50"><CheckCircle2 size={40} /></div>
-                    <h2 className="text-xl font-black text-slate-800 tracking-tight">Policy Issued Successfully!</h2>
-                    <p className="text-xs text-slate-500 px-6 font-medium">Your coverage is now active. Agent Zhang will finalize the digital documents shortly.</p>
+                    <h2 className="text-xl font-black text-slate-800 tracking-tight">Policy Active!</h2>
+                    <p className="text-xs text-slate-500 px-6 font-medium">Policy has been registered. View or download your documents below.</p>
                     <div className="flex flex-col w-full gap-2 pt-4 px-4">
                        <button className="w-full py-3 bg-slate-100 text-slate-800 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors"><Eye size={16} /> View Digital Policy</button>
-                       <button onClick={downloadPDF} className="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors"><Download size={16} /> Download Policy PDF</button>
+                       <button onClick={downloadPDF} className="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors"><Download size={16} /> Download PDF</button>
                     </div>
                   </div>
                 )}
@@ -339,14 +334,14 @@ const App = () => {
                 }}
                 className={`w-full py-4 rounded-2xl font-bold text-sm text-white shadow-lg transition-all active:scale-95 ${isAgentSide ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-[#128C7E] hover:bg-[#075E54]'}`}
               >
-                {isDetailsActive && formData.step === 0 ? "START APPLICATION" : isDetailsActive ? "BACK TO FLOW" : formData.step === 4 ? "PAY NOW" : formData.step === 0 ? "START APPLICATION" : "NEXT STEP"}
+                {isDetailsActive && formData.step === 0 ? "START APPLICATION" : isDetailsActive ? "BACK TO FLOW" : formData.step === 4 ? "CONFIRM & PAY" : formData.step === 0 ? "START APPLICATION" : "NEXT STEP"}
               </button>
             ) : (
               <button 
-                onClick={() => { setFormData(f => ({...f, step: 0, isAgentAssisting: false})); setDetailsActive(false); handleSendMessage('customer', "Done! Policy active."); }}
+                onClick={() => { setFormData(f => ({...f, step: 0, isAgentAssisting: false})); setDetailsActive(false); handleSendMessage('customer', "Great, policy received! Thanks."); }}
                 className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95"
               >
-                BACK TO CHAT
+                DONE (BACK TO CHAT)
               </button>
             )}
           </div>
@@ -362,28 +357,22 @@ const App = () => {
     <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-8 font-sans overflow-auto text-slate-800 selection:bg-indigo-100">
       <div className="mb-8 text-center animate-in fade-in slide-in-from-top-4 duration-700">
         <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-3"><Zap className="text-indigo-600 fill-indigo-600" size={28}/> WhatsApp Sales Copilot</h1>
-        <p className="text-slate-500 mt-2 text-sm max-w-lg mx-auto font-medium">Real-time Insurance Sales. Agent assists while Customer monitors.</p>
+        <p className="text-slate-500 mt-2 text-sm max-w-lg mx-auto font-medium">Strict Screen Isolation: Agent and Customer have independent UI shells.</p>
       </div>
 
       <div className="flex flex-wrap gap-12 items-start justify-center max-w-7xl w-full">
-        {/* Customer Side */}
+        {/* Customer Side View */}
         <div className="flex flex-col items-center gap-4 transition-all hover:scale-[1.01]">
-          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-bold uppercase tracking-widest border border-green-200 shadow-sm font-bold">Customer View</span>
+          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-bold uppercase tracking-widest border border-green-200 shadow-sm font-bold">Customer Mobile</span>
           <PhoneContainer title={AGENT_NAME} side="customer">
             {customerChats[activeCid]?.map(m => <MessageBubble key={m.id} msg={m} isAgentView={false} />)}
             
-            {/* Live Sync Card */}
+            {/* Live Card: ONLY if assisted AND details NOT open */}
             {formData.isAgentAssisting && formData.step > 0 && formData.step < 5 && !customerShowDetails && (
-              <div className="self-start bg-white rounded-xl shadow-xl border-2 border-indigo-200 w-72 mb-4 p-4 animate-in slide-in-from-left duration-500 group text-slate-800 text-left">
-                <div className="flex justify-between items-center mb-3 text-slate-800"><div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase"><Zap size={14} className="animate-pulse fill-indigo-600" /> Live Assist</div><span className="text-[9px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded">Step {formData.step}/5</span></div>
-                <div className="space-y-2 mb-4 text-slate-800">
-                  <div className="flex justify-between text-[10px] border-b pb-1 border-slate-50"><span className="text-slate-400 font-medium">Plan:</span><span className="font-bold text-slate-800">{formData.planName}</span></div>
-                  <div className="flex justify-between text-[10px] border-b pb-1 border-slate-50"><span className="text-slate-400 font-medium">Premium:</span><span className="font-bold text-indigo-600">${formData.premium}.00</span></div>
-                </div>
-                <div className="flex gap-2 text-slate-800">
-                  <button onClick={() => setFormData(f => ({...f, isAgentAssisting: false, step: formData.step || 1}))} className="flex-1 py-2 bg-[#128C7E] hover:bg-[#075E54] text-white rounded-lg font-bold text-[10px] uppercase shadow-md transition-all active:scale-95 flex items-center justify-center gap-1">Take Over</button>
-                  <button className="p-2 border border-slate-200 rounded-lg text-slate-400 hover:bg-slate-50 transition-colors"><RefreshCw size={14} /></button>
-                </div>
+              <div className="self-start bg-white rounded-xl shadow-xl border-2 border-indigo-200 w-72 mb-4 p-4 animate-in slide-in-from-left duration-500 group text-slate-800">
+                <div className="flex justify-between items-center mb-3"><div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase"><Zap size={14} className="animate-pulse fill-indigo-600" /> Live Assistant</div><span className="text-[9px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded">Step {formData.step}/5</span></div>
+                <div className="space-y-2 mb-4"><div className="flex justify-between text-[10px] border-b pb-1 border-slate-50 text-slate-800"><span className="text-slate-400">Plan:</span><span className="font-bold">{formData.planName}</span></div><div className="flex justify-between text-[10px] border-b pb-1 border-slate-50 text-slate-800"><span className="text-slate-400">Premium:</span><span className="font-bold text-indigo-600">${formData.premium}.00</span></div></div>
+                <button onClick={() => setFormData(f => ({...f, isAgentAssisting: false, step: formData.step || 1}))} className="w-full py-2 bg-[#128C7E] text-white rounded-lg font-bold text-[10px] uppercase shadow-md active:scale-95 transition-transform">Take Over UI</button>
               </div>
             )}
 
@@ -391,40 +380,34 @@ const App = () => {
               <div className="flex flex-col gap-2 mt-2 animate-in fade-in slide-in-from-bottom-2 duration-500"><button onClick={() => handleSendMessage('customer', "I am a delivery rider")} className="bg-white border-2 border-[#128C7E] text-[#128C7E] py-2.5 rounded-xl text-xs font-bold hover:bg-green-50 shadow-sm transition-all active:scale-95">I am a Delivery Rider</button><button onClick={() => handleSendMessage('customer', "I am an office worker")} className="bg-white border-2 border-slate-300 text-slate-500 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 shadow-sm transition-all active:scale-95">I am an Office Worker</button></div>
             )}
 
-            <WhatsAppFlow 
-              isAgentSide={false} 
-              isDetailsActive={customerShowDetails} 
-              setDetailsActive={setCustomerShowDetails} 
-            />
+            {/* Customer instance of Flow Shell */}
+            <WhatsAppFlow isAgentSide={false} isDetailsActive={customerShowDetails} setDetailsActive={setCustomerShowDetails} />
           </PhoneContainer>
         </div>
 
-        {/* Agent Side */}
+        {/* Agent Side View */}
         <div className="flex flex-col items-center gap-4 transition-all hover:scale-[1.01]">
-          <span className="px-3 py-1 bg-indigo-600 text-white rounded-full text-[10px] font-bold uppercase tracking-widest border border-indigo-700 shadow-md font-bold">Agent View</span>
-          <PhoneContainer title="Sales Copilot" side="agent" isAgent={true} subtitle={`Lead: ${MOCK_CUSTOMERS.find(c => c.id === activeCid)?.name}`}>
+          <span className="px-3 py-1 bg-indigo-600 text-white rounded-full text-[10px] font-bold uppercase tracking-widest border border-indigo-700 shadow-md font-bold">Agent Mobile</span>
+          <PhoneContainer title="Sales Copilot" side="agent" isAgent={true} subtitle={`Managing Lead: ${MOCK_CUSTOMERS.find(c => c.id === activeCid)?.name}`}>
             {formData.step > 0 && (
-              <div className="mb-4 bg-white p-4 rounded-3xl shadow-lg border border-indigo-100 animate-in fade-in duration-300 relative overflow-hidden group text-slate-800 text-left">
+              <div className="mb-4 bg-white p-4 rounded-3xl shadow-lg border border-indigo-100 animate-in fade-in duration-300 relative overflow-hidden group text-slate-800">
                 <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
-                <div className="flex justify-between items-center mb-2"><div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-tighter text-indigo-600"><div className="w-2 h-2 bg-indigo-500 rounded-full animate-ping"></div>Live Monitoring</div><span className="text-[10px] text-slate-400 font-mono italic font-bold">Step {formData.step}/5</span></div>
+                <div className="flex justify-between items-center mb-2"><div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-tighter"><div className="w-2 h-2 bg-indigo-500 rounded-full animate-ping"></div>Live Monitoring</div><span className="text-[10px] text-slate-400 font-mono italic font-bold">Step {formData.step}/5</span></div>
                 <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4 shadow-inner"><div className="h-full bg-indigo-500 transition-all duration-700" style={{ width: `${(formData.step / 5) * 100}%` }}></div></div>
-                <div className="grid grid-cols-2 gap-2"><button onClick={() => setFormData(f => ({...f, isAgentAssisting: !f.isAgentAssisting, step: f.step || 1}))} className={`text-[9px] font-bold px-2 py-2.5 rounded-xl uppercase transition-all shadow-sm ${formData.isAgentAssisting ? 'bg-indigo-600 text-white shadow-indigo-100' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}>{formData.isAgentAssisting ? 'Stop Assist' : 'Assist Entry'}</button><button className="text-[9px] font-bold text-slate-400 px-2 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-xl uppercase text-slate-500">View Logs</button></div>
+                <div className="grid grid-cols-2 gap-2"><button onClick={() => setFormData(f => ({...f, isAgentAssisting: !f.isAgentAssisting, step: f.step || 1}))} className={`text-[9px] font-bold px-2 py-2.5 rounded-xl uppercase transition-all shadow-sm ${formData.isAgentAssisting ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600'}`}>{formData.isAgentAssisting ? 'Stop Assist' : 'Assist Entry'}</button><button className="text-[9px] font-bold text-slate-400 px-2 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-xl uppercase text-slate-500">View Logs</button></div>
               </div>
             )}
             {copilotChats[activeCid]?.map(m => <MessageBubble key={m.id} msg={m} isAgentView={true} />)}
             
-            <WhatsAppFlow 
-              isAgentSide={true} 
-              isDetailsActive={agentShowDetails} 
-              setDetailsActive={setAgentShowDetails} 
-            />
+            {/* Agent instance of Flow Shell */}
+            <WhatsAppFlow isAgentSide={true} isDetailsActive={agentShowDetails} setDetailsActive={setAgentShowDetails} />
           </PhoneContainer>
         </div>
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes slide-up { from { transform: translateY(100%); opacity: 0.5; } to { transform: translateY(0); opacity: 1; } }
-        .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         ::selection { background-color: rgba(79, 70, 229, 0.1); color: #4f46e5; }
@@ -432,5 +415,4 @@ const App = () => {
     </div>
   );
 };
-
 export default App;
